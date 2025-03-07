@@ -43,7 +43,7 @@
 ## Screenshots
 
 1. **Главный экран калькулятора**
-    ![Главный экран калькулятора](screenshots/main_screen.png = 150x150)
+    ![Главный экран калькулятора](screenshots/main_screen.png)
 2. **Пример использования квадратного корня и возведения в квадрат:**
     ![Пример использования квадратного корня](screenshots/square_root_operation.png)
     ![Пример использования возведения в квадрат](screenshots/square_operation.png)
