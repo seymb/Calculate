@@ -45,7 +45,7 @@
 1. **Главный экран калькулятора**
     ![Главный экран калькулятора](screenshots/main_screen.png)
 2. **Пример использования квадратного корня и возведения в квадрат:**
-    ![Пример использования квадратного корня](screenshots/square_root_operation.png)
+    ![Пример использования квадратного корня]<img src="screenshots/square_root_operation.png" width="150" height="300" />
     ![Пример использования возведения в квадрат](screenshots/square_operation.png)
 3. **Ошибка или предупреждение (деление на ноль):**
     ![Ошибка деления на ноль](screenshots/zero_division_error.png)
