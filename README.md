@@ -21,7 +21,7 @@
 - Запустите скрипт:
 
 ```bash
-  python calculator.py
+  python calculate.py
 ```
     
 ## Структура кода
