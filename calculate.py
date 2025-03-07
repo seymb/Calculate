@@ -10,10 +10,11 @@ class CalculatorApp:
     def __init__(self):
         self.root = Tk()
         self.root.title('Calculator')
-        self.root.geometry('360x600')
+        self.root.geometry('400x600')
         icon = PhotoImage(file = "Calculator.png")
         self.root.iconphoto(False, icon)
         self.root.configure(background='black')
+        self.root.resizable(False, False)
         
         self.style = ttk.Style()
         self.style.theme_use('clam')
@@ -33,23 +34,56 @@ class Display:
     # Показывает ввод пользователя
     # Обновляется при нажатии кнопок
     def __init__(self, master, calculatorlogic):
-        self.label = ttk.Label(master, text='', font=('Segoe UI', 20), background='black', foreground='white')
+        self.label = ttk.Label(master, text='', font=('Segoe UI', 25), background='black', foreground='white')
         self.label.pack(anchor=E)
         self.result = ttk.Label(master, text='', font=('Segoe UI', 40), background='black', foreground='white')
         self.result.pack(anchor=E)
         self.temp_num = []
         self.input_string = ''
-        self.flag = '' #запоминаем какая последняя скобка было введена
-        self.var = [] #стек
+        self.flag_brackets = '' #запоминаем какая последняя скобка было введена
+        self.stack_brackets = [] #стек
+        self.calculation_done = False  # Флаг для отслеживания, что вычисление завершено
         self.calculatorlogic = calculatorlogic
 
     def update_display(self, value):
         self.result.config(text=value)
 
+    def all_clear(self):
+        self.input_string = ''
+        self.flag_brackets = '' # очищаем иначе он будет думать что скобка уже существует
+        self.temp_num = []
+        self.label.config(text='')
+        self.result.config(text='')
+        self.calculation_done = False
+
     def add_to_input(self, value):
+        # Когда после "Не определено" вводится число
+        if self.result["text"] == "Не определено":
+            self.all_clear()
+            self.input_string = value
+            self.update_display(self.input_string)
+            return
+        # Когда после результата (числа) введена цифра
+        if self.calculation_done and value.isdigit():
+            self.input_string = value
+            self.label.config(text='')
+            self.update_display(self.input_string)
+            self.calculation_done = False  # Сбрасываем флаг после ввода цифры
+            return
+        
+        # Если результат - число (включая отрицательные), и введен операнд, продолжаем вычисление
+        if self.result["text"].replace('-', '').isdigit() and value in '+-÷*':
+            self.input_string += value
+            self.update_display(self.input_string)
+            self.calculation_done = False  # Сбрасываем флаг после ввода операнда
+            return
+        
+        # Обработка ввода чисел
         if value.isdigit() or (value == '.' and self.input_string):
             self.input_string += value
             self.update_display(self.input_string)
+        
+        # Обработка операндов
         elif value in '+-÷*':
             if self.input_string and '(' in self.input_string:
                 if value == '-' and self.input_string[-1] != '-':
@@ -65,13 +99,13 @@ class Display:
                 if self.input_string and self.input_string[-1] not in '+-÷*':
                     self.input_string += value
                     self.update_display(self.input_string)
+        
+        # Если нажали 'C', очищаем все
         elif value == 'C':
-            self.input_string = ''
-            self.flag = '' # очищаем иначе он будет думать что скобка уже существует
-            self.temp_num = []
-            self.label.config(text='')
-            self.result.config(text='')
-        elif value in 'x²√': # ДОРАБОТАТЬ
+            self.all_clear()
+        
+        # Обработка квадратов и корней
+        elif value in 'x²√':
             if self.input_string and self.input_string[-1] not in '+-÷*':
                 if value == 'x²' and self.input_string[-1] != '²':
                     self.input_string += '²'
@@ -97,16 +131,18 @@ class Display:
                         if last_number:
                             self.input_string = self.input_string[:i+1] + f'√({last_number})'
             self.update_display(self.input_string)
+
+        # Обработка скобок
         elif value == '()':
-            #Скобки добавляются правильно, скобка добавится если он первый элемент, а так 
-            # же не закроет если последним элементом будем операция вычисления
-            if '(' != self.flag and (not self.input_string or self.input_string[-1] in '+-÷*'):
+            if '(' != self.flag_brackets and (not self.input_string or self.input_string[-1] in '+-÷*'):
                 self.input_string += '('
-                self.flag = '('
-            elif self.flag == '(' and self.input_string[-1] not in '+-÷*' and self.input_string[-1].isdigit():
+                self.flag_brackets = '('
+            elif self.flag_brackets == '(' and self.input_string[-1] not in '+-÷*' and self.input_string[-1].isdigit():
                 self.input_string += ')'
-                self.flag = ')'
+                self.flag_brackets = ')'
             self.update_display(self.input_string)
+
+        # Обработка равенства
         elif value == '=':
             if (self.input_string and 
                     self.input_string[-1] not in '+-÷*' and
@@ -117,18 +153,18 @@ class Display:
                     '²' in self.input_string or
                     '√' in self.input_string)
                 ):
-                if self.flag == '(':
+                if self.flag_brackets == '(':
                     self.input_string += ')'
                 self.label.config(text=self.input_string)
                 self.temp_var = ''
                 s = self.input_string.replace('²', 'x') #заменяем для того что прошло вычиселение в calculatorlogic
                 for i in range(len(s)):
-                    if (i+1 < len(s)) and (s[i-1] == '(' or i == 0) and s[i] == '-' and s[i+1].isdigit(): # s[i] != '('
+                    if (i+1 < len(s)) and (s[i-1] == '(' or i == 0) and s[i] == '-' and s[i+1].isdigit():
                         self.temp_var += s[i]
                     elif s[i].isdigit() or s[i] == '.':
                         self.temp_var += s[i]
                     elif s[i] == '(':
-                        self.var.append(self.temp_num)
+                        self.stack_brackets.append(self.temp_num)
                         self.temp_num = []
                     elif s[i] == ')':
                         if self.temp_var:
@@ -137,9 +173,8 @@ class Display:
                         if len(self.temp_num) > 2 or '√' in self.temp_num or 'x' in self.temp_num:
                             result = self.calculatorlogic.calculate(self.temp_num)
                         else:
-                            # result = int(self.temp_num[0]) if isinstance(self.temp_num[0], int) else self.temp_num[0]
-                            result = self.temp_num[0] # Есть мысль что она работает также эффективно как и сверху
-                        self.temp_num = self.var.pop()
+                            result = self.temp_num[0]
+                        self.temp_num = self.stack_brackets.pop()
                         self.temp_num.append(result)
                     else:
                         if self.temp_var:
@@ -153,10 +188,12 @@ class Display:
                     self.update_display(str(result1))
                     self.temp_num = []
                     self.input_string = str(result1)
+                    self.calculation_done = True
                 else:
                     self.update_display(str(result))
                     self.temp_num = []
                     self.input_string = str(result)
+                    self.calculation_done = True
 
     
 
@@ -170,17 +207,17 @@ class Keypad:
         self.calculatorlogic = calculatorlogic
 
         nums = {
-                0:{'number': '0', 'row':4, 'col': 1},
-                1:{'number': '1', 'row':3, 'col': 0},
-                2:{'number': '2', 'row':3, 'col': 1},
-                3:{'number': '3', 'row':3, 'col': 2},
-                4:{'number': '4', 'row':2, 'col': 0},
-                5:{'number': '5', 'row':2, 'col': 1},
-                6:{'number': '6', 'row':2, 'col': 2},
-                7:{'number': '7', 'row':1, 'col': 0},
-                8:{'number': '8', 'row':1, 'col': 1},
-                9:{'number': '9', 'row':1, 'col': 2},
-                10:{'number': '.', 'row':4, 'col': 0},
+                0:{'text': '0', 'row':4, 'col': 1},
+                1:{'text': '1', 'row':3, 'col': 0},
+                2:{'text': '2', 'row':3, 'col': 1},
+                3:{'text': '3', 'row':3, 'col': 2},
+                4:{'text': '4', 'row':2, 'col': 0},
+                5:{'text': '5', 'row':2, 'col': 1},
+                6:{'text': '6', 'row':2, 'col': 2},
+                7:{'text': '7', 'row':1, 'col': 0},
+                8:{'text': '8', 'row':1, 'col': 1},
+                9:{'text': '9', 'row':1, 'col': 2},
+                10:{'text': '.', 'row':4, 'col': 0},
                 }
         
         oper = {0:{'text': '=', 'row':4, 'col': 3},
@@ -197,15 +234,16 @@ class Keypad:
         for i in range(4):
             self.frame.columnconfigure(index=i, weight=1)
             self.frame.rowconfigure(index=i, weight=1)
+            
+        self.create_buttons(nums, 'Num_Button.TButton')
+        self.create_buttons(oper, 'Oper_Button.TButton')
+            
+    def create_buttons(self, button_data, button_style):
+        for i in button_data:
+            self.btn = ttk.Button(self.frame, style=button_style, takefocus=0, text=button_data[i]['text'], command=lambda t=button_data[i]['text']: self.on_button_click(t))
+            self.btn.grid(row=button_data[i]['row'], column=button_data[i]['col'], ipady=20, sticky=NSEW)
 
 
-        for i in nums:
-            self.btn = ttk.Button(self.frame, style='Num_Button.TButton', takefocus=0, text=nums[i]['number'], command=lambda t=nums[i]['number']: self.on_button_click(t))
-            self.btn.grid(row=nums[i]['row'], column=nums[i]['col'], ipady=20, sticky=NSEW)
-
-        for i in oper:
-            self.btn = ttk.Button(self.frame, style='Oper_Button.TButton', takefocus=0, text=oper[i]['text'], command=lambda t=oper[i]['text']: self.on_button_click(t))
-            self.btn.grid(row=oper[i]['row'], column=oper[i]['col'], ipady=20, sticky=NSEW)
         
     def on_button_click(self, value):
         self.display.add_to_input(value)
@@ -280,9 +318,9 @@ class CalculatorLogic:
                     oper = stack_oper.pop()
                     result = self.operation[oper](a)
                 stack_nums.append(result)
+            return int(result) if result.is_integer() else float('{:.7f}'.format(result))
         except:
             return 'Не определено'
-        return int(result) if result.is_integer() else float('{:.7f}'.format(result))
 
 
     
